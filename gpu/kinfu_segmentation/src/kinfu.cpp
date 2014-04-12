@@ -581,8 +581,18 @@ pcl::gpu::KinfuTracker::operator() (const DepthMap& depth_raw,
   if (integrate && bg_integrate_)
   {
     {
+      /*
+      device::integrateTsdfVolume(depth_raw, intr,
+                                  device_volume_size, device_Rcam_inv, device_tcam,
+                                  tsdf_volume_->getTsdfTruncDist(),
+                                  tsdf_volume_->data(), depthRawScaled_);
+                                  */
+
       //ScopeTime time("TSDF Background");
-      integrateTsdfVolume (depth_raw_bg_, intr, bg_volume_size, device_Rcurr_inv, device_tcurr, tsdf_volume_->getTsdfTruncDist(), tsdf_volume_->data(), depthRawScaled_, bg_stream_);
+      integrateTsdfVolume (depth_raw_bg_, intr,
+                           bg_volume_size, device_Rcurr_inv, device_tcurr,
+                           tsdf_volume_->getTsdfTruncDist(),
+                           tsdf_volume_->data(), depthRawScaled_);
     }
   }
 
@@ -689,7 +699,7 @@ pcl::gpu::KinfuTracker::getNumberOfPoses () const
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const TsdfVolume& 
+const TsdfVolume<short2>&
 pcl::gpu::KinfuTracker::volume() const 
 { 
   return *tsdf_volume_; 
@@ -697,7 +707,7 @@ pcl::gpu::KinfuTracker::volume() const
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-TsdfVolume& 
+TsdfVolume<short2>&
 pcl::gpu::KinfuTracker::volume()
 {
   return *tsdf_volume_;
@@ -747,7 +757,7 @@ pcl::gpu::KinfuTracker::getImage (View& view) const
   light.pos[0] = device_cast<const float3>(light_source_pose);
 
   view.create (rows_, cols_);
-  generateImage (vmaps_g_prev_[0], nmaps_g_prev_[0], light, view);
+  generateImage (vmaps_g_prev_[0], nmaps_g_prev_[0], light, view, false);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

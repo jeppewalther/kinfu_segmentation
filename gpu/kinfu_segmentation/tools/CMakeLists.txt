@@ -15,7 +15,7 @@ if(OPENNI_FOUND)
 
 	## KINECT FUSION
 	set(the_target pcl_kinfu_segmentation_app)
-	set(srcs kinfu_app.cpp capture.cpp evaluation.cpp)
+        set(srcs kinfu_segmentation_app.cpp capture.cpp evaluation.cpp)
 
 	source_group("Source Files" FILES ${srcs} )
 

@@ -210,6 +210,59 @@ namespace pcl
           */
         void
         getImage (View& view) const;
+
+        /** \brief Renders 3D FG scene to display to human
+          * \param[out] view output array with image
+          */
+        void
+        getImageFG (View& view) const;
+
+        void
+        getFilteredOutliersView(View& view);
+
+        void
+        getFilteredIntersectionMap(View& view);
+
+
+        /** \brief
+          * \param[out] depth
+          */
+        void
+        getDepth (DepthMap& depth) const;
+
+
+        /** \brief Returns icp outliers image
+          * \param[out] view output array with image
+          */
+        void
+        getICPOutliers (DeviceArray2D<unsigned char>& view) const;
+
+
+        void
+        getICPOutliersEroded(DeviceArray2D<unsigned char> &view) const;
+
+
+        /** \brief Returns icp outliers image
+          * \param[out] view output array with image
+          */
+        void
+        getICPOutliersFiltered (DeviceArray2D<unsigned int>& view) const;
+
+
+        void
+        getIntersectionMap(DeviceArray2D<unsigned char> &view) const;
+
+
+        void
+        getIntersectionMapColorized(View& view);
+
+
+
+        /** \brief Renders 3D a comp of FG and BG raycastings
+          * \param[out] view output array with image
+          */
+        void
+        getImageFGBG (View& viewFG, View& viewBG, View& view) const;
         
         /** \brief Returns point cloud abserved from last camera pose
           * \param[out] cloud output array for points
@@ -222,6 +275,12 @@ namespace pcl
           */
         void
         getLastFrameNormals (DeviceArray2D<NormalType>& normals) const;
+
+        const DeviceArray2D<float>&
+        getFrameNormalsHost () const;
+
+        const std::vector<float3>&
+        getIntersections () const;
 
         /** \brief Disables ICP forever */
         void disableIcp();
@@ -318,9 +377,9 @@ namespace pcl
         DeviceArray2D<float> depthRawScaled_fg_;
 
         /** \brief Temporary buffer for ICP */
-        DeviceArray2D<float> gbuf_;
+        DeviceArray2D<double> gbuf_;
         /** \brief Buffer to store MLS matrix. */
-        DeviceArray<float> sumbuf_;
+        DeviceArray<double> sumbuf_;
 
         /** \brief Buffer to store ICP outliers from the camera tracking. */
         DeviceArray2D<unsigned char> icp_outliers_;

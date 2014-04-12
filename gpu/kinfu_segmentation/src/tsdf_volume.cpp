@@ -46,8 +46,8 @@ using namespace Eigen;
 using pcl::device::device_cast;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-pcl::gpu::TsdfVolume::TsdfVolume(const Vector3i& resolution) : resolution_(resolution)
+template <class T>
+pcl::gpu::TsdfVolume<T>::TsdfVolume(const Vector3i& resolution) : resolution_(resolution)
 {
   int volume_x = resolution_(0);
   int volume_y = resolution_(1);
@@ -66,8 +66,8 @@ pcl::gpu::TsdfVolume::TsdfVolume(const Vector3i& resolution) : resolution_(resol
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void
-pcl::gpu::TsdfVolume::setSize(const Vector3f& size)
+template <class T> void
+pcl::gpu::TsdfVolume<T>::setSize(const Vector3f& size)
 {  
   size_ = size;
   setTsdfTruncDist(tranc_dist_);
@@ -75,8 +75,8 @@ pcl::gpu::TsdfVolume::setSize(const Vector3f& size)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void
-pcl::gpu::TsdfVolume::setTsdfTruncDist (float distance)
+template <class T> void
+pcl::gpu::TsdfVolume<T>::setTsdfTruncDist (float distance)
 {
   float cx = size_(0) / resolution_(0);
   float cy = size_(1) / resolution_(1);
@@ -90,183 +90,191 @@ pcl::gpu::TsdfVolume::setTsdfTruncDist (float distance)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pcl::gpu::DeviceArray2D<int> 
-pcl::gpu::TsdfVolume::data() const
+template <class T> pcl::gpu::DeviceArray2D<T>
+pcl::gpu::TsdfVolume<T>::data() const
 {
   return volume_;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const Eigen::Vector3f&
-pcl::gpu::TsdfVolume::getSize() const
+template <class T> const Eigen::Vector3f&
+pcl::gpu::TsdfVolume<T>::getSize() const
 {
     return size_;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const Eigen::Vector3i&
-pcl::gpu::TsdfVolume::getResolution() const
+template <class T> const Eigen::Vector3i&
+pcl::gpu::TsdfVolume<T>::getResolution() const
 {
   return resolution_;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const Eigen::Vector3f
-pcl::gpu::TsdfVolume::getVoxelSize() const
+template <class T> const Eigen::Vector3f
+pcl::gpu::TsdfVolume<T>::getVoxelSize() const
 {    
   return size_.array () / resolution_.array().cast<float>();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-float
-pcl::gpu::TsdfVolume::getTsdfTruncDist () const
+template <class T> float
+pcl::gpu::TsdfVolume<T>::getTsdfTruncDist () const
 {
   return tranc_dist_;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void 
-pcl::gpu::TsdfVolume::reset()
+template <class T> void
+pcl::gpu::TsdfVolume<T>::reset()
 {
   device::initVolume(volume_);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void
-pcl::gpu::TsdfVolume::fetchCloudHost (PointCloud<PointType>& cloud, bool connected26) const
+
+namespace pcl
 {
-  int volume_x = resolution_(0);
-  int volume_y = resolution_(1);
-  int volume_z = resolution_(2);
-
-  int cols;
-  std::vector<int> volume_host;
-  volume_.download (volume_host, cols);
-
-  cloud.points.clear ();
-  cloud.points.reserve (10000);
-
-  const int DIVISOR = device::DIVISOR; // SHRT_MAX;
-
-#define FETCH(x, y, z) volume_host[(x) + (y) * volume_x + (z) * volume_y * volume_x]
-
-  Array3f cell_size = getVoxelSize();
-
-  for (int x = 1; x < volume_x-1; ++x)
+  namespace gpu
   {
-    for (int y = 1; y < volume_y-1; ++y)
+    template <> void
+    TsdfVolume<short2>::fetchCloudHost (PointCloud<PointType>& cloud, bool connected26) const
     {
-      for (int z = 0; z < volume_z-1; ++z)
+      int volume_x = resolution_(0);
+      int volume_y = resolution_(1);
+      int volume_z = resolution_(2);
+
+      int cols;
+      std::vector<short2> volume_host;
+      volume_.download (volume_host, cols);
+
+      cloud.points.clear ();
+      cloud.points.reserve (10000);
+
+      const int DIVISOR = device::DIVISOR; // SHRT_MAX;
+
+    #define FETCH(x, y, z) volume_host[(x) + (y) * volume_x + (z) * volume_y * volume_x]
+
+      Array3f cell_size = getVoxelSize();
+
+      for (int x = 1; x < volume_x-1; ++x)
       {
-        int tmp = FETCH (x, y, z);
-        int W = reinterpret_cast<short2*>(&tmp)->y;
-        int F = reinterpret_cast<short2*>(&tmp)->x;
-
-        if (W == 0 || F == DIVISOR)
-          continue;
-
-        Vector3f V = ((Array3i(x, y, z).cast<float>() + 0.5f) * cell_size).matrix ();
-
-        if (connected26)
+        for (int y = 1; y < volume_y-1; ++y)
         {
-          int dz = 1;
-          for (int dy = -1; dy < 2; ++dy)
-            for (int dx = -1; dx < 2; ++dx)
-            {
-              int tmp = FETCH (x+dx, y+dy, z+dz);
-
-              int Wn = reinterpret_cast<short2*>(&tmp)->y;
-              int Fn = reinterpret_cast<short2*>(&tmp)->x;
-              if (Wn == 0 || Fn == DIVISOR)
-                continue;
-
-              if ((F > 0 && Fn < 0) || (F < 0 && Fn > 0))
-              {
-                Vector3f Vn = ((Array3i (x+dx, y+dy, z+dz).cast<float>() + 0.5f) * cell_size).matrix ();
-                Vector3f point = (V * (float)abs (Fn) + Vn * (float)abs (F)) / (float)(abs (F) + abs (Fn));
-
-                pcl::PointXYZ xyz;
-                xyz.x = point (0);
-                xyz.y = point (1);
-                xyz.z = point (2);
-
-                cloud.points.push_back (xyz);
-              }
-            }
-          dz = 0;
-          for (int dy = 0; dy < 2; ++dy)
-            for (int dx = -1; dx < dy * 2; ++dx)
-            {
-              int tmp = FETCH (x+dx, y+dy, z+dz);
-
-              int Wn = reinterpret_cast<short2*>(&tmp)->y;
-              int Fn = reinterpret_cast<short2*>(&tmp)->x;
-              if (Wn == 0 || Fn == DIVISOR)
-                continue;
-
-              if ((F > 0 && Fn < 0) || (F < 0 && Fn > 0))
-              {
-                Vector3f Vn = ((Array3i (x+dx, y+dy, z+dz).cast<float>() + 0.5f) * cell_size).matrix ();
-                Vector3f point = (V * (float)abs(Fn) + Vn * (float)abs(F))/(float)(abs(F) + abs (Fn));
-
-                pcl::PointXYZ xyz;
-                xyz.x = point (0);
-                xyz.y = point (1);
-                xyz.z = point (2);
-
-                cloud.points.push_back (xyz);
-              }
-            }
-        }
-        else /* if (connected26) */
-        {
-          for (int i = 0; i < 3; ++i)
+          for (int z = 0; z < volume_z-1; ++z)
           {
-            int ds[] = {0, 0, 0};
-            ds[i] = 1;
+            short2 tmp = FETCH (x, y, z);
+            int W = tmp.y;
+            int F = tmp.x;
 
-            int dx = ds[0];
-            int dy = ds[1];
-            int dz = ds[2];
-
-            int tmp = FETCH (x+dx, y+dy, z+dz);
-
-            int Wn = reinterpret_cast<short2*>(&tmp)->y;
-            int Fn = reinterpret_cast<short2*>(&tmp)->x;
-            if (Wn == 0 || Fn == DIVISOR)
+            if (W == 0 || F == DIVISOR)
               continue;
 
-            if ((F > 0 && Fn < 0) || (F < 0 && Fn > 0))
+            Vector3f V = ((Array3f(x, y, z) + 0.5f) * cell_size).matrix ();
+
+            if (connected26)
             {
-              Vector3f Vn = ((Array3i (x+dx, y+dy, z+dz).cast<float>() + 0.5f) * cell_size).matrix ();
-              Vector3f point = (V * (float)abs (Fn) + Vn * (float)abs (F)) / (float)(abs (F) + abs (Fn));
+              int dz = 1;
+              for (int dy = -1; dy < 2; ++dy)
+                for (int dx = -1; dx < 2; ++dx)
+                {
+                  tmp = FETCH (x, y, z);
 
-              pcl::PointXYZ xyz;
-              xyz.x = point (0);
-              xyz.y = point (1);
-              xyz.z = point (2);
+                  int Wn = tmp.y;
+                  int Fn = tmp.x;
+                  if (Wn == 0 || Fn == DIVISOR)
+                    continue;
 
-              cloud.points.push_back (xyz);
+                  if ((F > 0 && Fn < 0) || (F < 0 && Fn > 0))
+                  {
+                    Vector3f Vn = ((Array3f (x+dx, y+dy, z+dz) + 0.5f) * cell_size).matrix ();
+                    Vector3f point = (V * abs (Fn) + Vn * abs (F)) / (abs (F) + abs (Fn));
+
+                    pcl::PointXYZ xyz;
+                    xyz.x = point (0);
+                    xyz.y = point (1);
+                    xyz.z = point (2);
+
+                    cloud.points.push_back (xyz);
+                  }
+                }
+              dz = 0;
+              for (int dy = 0; dy < 2; ++dy)
+                for (int dx = -1; dx < dy * 2; ++dx)
+                {
+                  tmp = FETCH (x, y, z);
+
+                  int Wn = tmp.y;
+                  int Fn = tmp.x;
+                  if (Wn == 0 || Fn == DIVISOR)
+                    continue;
+
+                  if ((F > 0 && Fn < 0) || (F < 0 && Fn > 0))
+                  {
+                    Vector3f Vn = ((Array3f (x+dx, y+dy, z+dz) + 0.5f) * cell_size).matrix ();
+                    Vector3f point = (V * abs(Fn) + Vn * abs(F))/(abs(F) + abs (Fn));
+
+                    pcl::PointXYZ xyz;
+                    xyz.x = point (0);
+                    xyz.y = point (1);
+                    xyz.z = point (2);
+
+                    cloud.points.push_back (xyz);
+                  }
+                }
             }
+            else /* if (connected26) */
+            {
+              for (int i = 0; i < 3; ++i)
+              {
+                int ds[] = {0, 0, 0};
+                ds[i] = 1;
+
+                int dx = ds[0];
+                int dy = ds[1];
+                int dz = ds[2];
+
+                tmp = FETCH (x, y, z);
+
+                int Wn = tmp.y;
+                int Fn = tmp.x;
+                if (Wn == 0 || Fn == DIVISOR)
+                  continue;
+
+                if ((F > 0 && Fn < 0) || (F < 0 && Fn > 0))
+                {
+                  Vector3f Vn = ((Array3f (x+dx, y+dy, z+dz) + 0.5f) * cell_size).matrix ();
+                  Vector3f point = (V * abs (Fn) + Vn * abs (F)) / (abs (F) + abs (Fn));
+
+                  pcl::PointXYZ xyz;
+                  xyz.x = point (0);
+                  xyz.y = point (1);
+                  xyz.z = point (2);
+
+                  cloud.points.push_back (xyz);
+                }
+              }
+            } /* if (connected26) */
           }
-        } /* if (connected26) */
+        }
       }
+    #undef FETCH
+      cloud.width  = (int)cloud.points.size ();
+      cloud.height = 1;
     }
   }
-#undef FETCH
-  cloud.width  = (int)cloud.points.size ();
-  cloud.height = 1;
 }
 
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-pcl::gpu::DeviceArray<pcl::gpu::TsdfVolume::PointType>
-pcl::gpu::TsdfVolume::fetchCloud (DeviceArray<PointType>& cloud_buffer) const
+template <class T> pcl::gpu::DeviceArray<PointXYZ>
+pcl::gpu::TsdfVolume<T>::fetchCloud (DeviceArray<PointXYZ>& cloud_buffer) const
 {
   if (cloud_buffer.empty ())
     cloud_buffer.create (DEFAULT_CLOUD_BUFFER_SIZE);
@@ -276,10 +284,11 @@ pcl::gpu::TsdfVolume::fetchCloud (DeviceArray<PointType>& cloud_buffer) const
   return (DeviceArray<PointType> (cloud_buffer.ptr (), size));
 }
 
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void
-pcl::gpu::TsdfVolume::fetchNormals (const DeviceArray<PointType>& cloud, DeviceArray<PointType>& normals) const
+template <class T> void
+pcl::gpu::TsdfVolume<T>::fetchNormals (const DeviceArray<PointType>& cloud, DeviceArray<PointType>& normals) const
 {
   normals.create (cloud.size ());
   const float3 device_volume_size = device_cast<const float3> (size_);
@@ -288,8 +297,8 @@ pcl::gpu::TsdfVolume::fetchNormals (const DeviceArray<PointType>& cloud, DeviceA
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void
-pcl::gpu::TsdfVolume::fetchNormals (const DeviceArray<PointType>& cloud, DeviceArray<NormalType>& normals) const
+template <class T> void
+pcl::gpu::TsdfVolume<T>::fetchNormals (const DeviceArray<PointType>& cloud, DeviceArray<NormalType>& normals) const
 {
   normals.create (cloud.size ());
   const float3 device_volume_size = device_cast<const float3> (size_);
@@ -298,8 +307,8 @@ pcl::gpu::TsdfVolume::fetchNormals (const DeviceArray<PointType>& cloud, DeviceA
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void
-pcl::gpu::TsdfVolume::downloadTsdf (std::vector<float>& tsdf) const
+template <class T> void
+pcl::gpu::TsdfVolume<T>::downloadTsdf (std::vector<float>& tsdf) const
 {
   tsdf.resize (volume_.cols() * volume_.rows());
   volume_.download(&tsdf[0], volume_.cols() * sizeof(int));
@@ -314,8 +323,8 @@ pcl::gpu::TsdfVolume::downloadTsdf (std::vector<float>& tsdf) const
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void
-pcl::gpu::TsdfVolume::downloadTsdfAndWeighs (std::vector<float>& tsdf, std::vector<short>& weights) const
+template <class T> void
+pcl::gpu::TsdfVolume<T>::downloadTsdfAndWeighs (std::vector<float>& tsdf, std::vector<short>& weights) const
 {
   int volumeSize = volume_.cols() * volume_.rows();
   tsdf.resize (volumeSize);
