@@ -48,7 +48,7 @@ using pcl::device::device_cast;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pcl::gpu::ColorVolume::ColorVolume(const TsdfVolume& tsdf, int max_weight) : resolution_(tsdf.getResolution()), volume_size_(tsdf.getSize()), max_weight_(1)
+pcl::gpu::ColorVolume::ColorVolume(const TsdfVolume<short2>& tsdf, int max_weight) : resolution_(tsdf.getResolution()), volume_size_(tsdf.getSize()), max_weight_(1)
 {
   max_weight_ = max_weight < 0 ? max_weight_ : max_weight;
   max_weight_ = max_weight_ > 255 ? 255 : max_weight_;

@@ -52,6 +52,7 @@ namespace pcl
     /** \brief TsdfVolume class
       * \author Anatoly Baskeheev, Itseez Ltd, (myname.mysurname@mycompany.com)
       */
+    template <class T>
     class PCL_EXPORTS TsdfVolume
     {
     public:
@@ -82,7 +83,7 @@ namespace pcl
       setTsdfTruncDist (float distance);
 
       /** \brief Returns tsdf volume container that point to data in GPU memroy */
-      DeviceArray2D<int> 
+      DeviceArray2D<T>
       data() const;
 
       /** \brief Returns volume size in meters */
@@ -154,7 +155,7 @@ namespace pcl
       Eigen::Vector3i resolution_;      
 
       /** \brief tsdf volume data container */
-      DeviceArray2D<int> volume_;
+      DeviceArray2D<T> volume_;
 
       /** \brief tsdf truncation distance */
       float tranc_dist_;

@@ -78,7 +78,7 @@ pcl::gpu::KinfuTracker::KinfuTracker (int rows, int cols) : rows_(rows), cols_(c
   const Vector3f volume_size = Vector3f::Constant (VOLUME_SIZE);
   const Vector3i volume_resolution(VOLUME_X, VOLUME_Y, VOLUME_Z);
    
-  tsdf_volume_ = TsdfVolume::Ptr( new TsdfVolume(volume_resolution) );
+  tsdf_volume_ = TsdfVolume<short2>::Ptr( new TsdfVolume<short2>(volume_resolution) );
   tsdf_volume_->setSize(volume_size);
 
   // Init foregorund volume
@@ -446,13 +446,28 @@ pcl::gpu::KinfuTracker::operator() (const DepthMap& depth_raw,
             //ma.download(cpu);
             //cv::imshow(names[level_index] + string(" --- coresp white == -1"), cpu == -1);
     #else
-//            estimateCombined (device_Rcurr, device_tcurr, vmap_curr, nmap_curr, device_Rprev_inv, device_tprev, intr (level_index),
-//                              vmap_g_prev, nmap_g_prev, distThres_, angleThres_, gbuf_, sumbuf_, A.data (), b.data ());
+            /* Original code from kinfu_app
+            estimateCombined (device_Rcurr, device_tcurr,
+                              vmap_curr, nmap_curr,
+                              device_Rprev_inv, device_tprev, intr (level_index),
+                              vmap_g_prev, nmap_g_prev,
+                              distThres_, angleThres_,
+                              gbuf_, sumbuf_,
+                              A.data (), b.data ());
+            */
 
-            //KS
-            estimateCombined (device_Rcurr, device_tcurr, vmap_curr, nmap_curr, device_Rprev_inv, device_tprev, intr (level_index),
-                              vmap_g_prev, nmap_g_prev, distThres_, angleThres_, gbuf_, sumbuf_, A.data (), b.data (),
+
+            estimateCombined (device_Rcurr, device_tcurr,
+                              vmap_curr, nmap_curr,
+                              device_Rprev_inv, device_tprev, intr (level_index),
+                              vmap_g_prev, nmap_g_prev,
+                              distThres_, angleThres_,
+                              gbuf_, sumbuf_,
+                              A.data (), b.data (),
                               icp_outliers_);
+
+
+
     #endif
             //checking nullspace
             double det = A.determinant ();

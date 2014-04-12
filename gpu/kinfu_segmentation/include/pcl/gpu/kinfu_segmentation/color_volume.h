@@ -43,11 +43,13 @@
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <Eigen/Core>
+#include <vector_types.h>
 
 namespace pcl
 {
   namespace gpu
   {
+    template <class T>
     class TsdfVolume;
 
     /** \brief ColorVolume class
@@ -63,7 +65,7 @@ namespace pcl
         * \param[in] tsdf tsdf volume to get parameters from
         * \param[in] max_weight max weight for running average. Can be less than 255. Negative means default.
         */
-      ColorVolume(const TsdfVolume& tsdf, int max_weight = -1);
+      ColorVolume(const TsdfVolume<short2>& tsdf, int max_weight = -1);
 
       /** \brief Desctructor */
       ~ColorVolume();

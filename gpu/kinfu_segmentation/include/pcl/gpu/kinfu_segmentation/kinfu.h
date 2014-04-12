@@ -120,6 +120,27 @@ namespace pcl
           */
         void
         setIcpCorespFilteringParams (float distThreshold, float sineOfAngle);
+
+        /** \brief Sets parameters for Outliers Connected Components Analysis
+          * \param[in] depthThreshold distance used for seperating connected components by depth
+          * \param[in] minBlobSize
+          */
+        void
+        setOutliersConnectedComponentsParams (unsigned int depth_threshold, unsigned int min_blob_size,
+                                              unsigned int max_blob_count, unsigned int erode_size);
+
+        /** \brief Sets Intersection Detection parameters
+          * \param[in] depthThreshold distance used for seperating connected components by depth
+          */
+        void
+        setIntersectionDetectionParams (  float intersection_threshold,
+                                          int cc_min_blob_size,
+                                          int cc_depth_threshold,
+                                          int cc_max_blob_count
+                                       );
+
+        void
+        setBGIntegrate(bool val);
         
         /** \brief Sets integration threshold. TSDF volume is integrated iff a camera movement metric exceedes the threshold value. 
           * The metric represents the following: M = (rodrigues(Rotation).norm() + alpha*translation.norm())/2, where alpha = 1.f (hardcoded constant)
@@ -167,10 +188,16 @@ namespace pcl
         getNumberOfPoses () const;
 
         /** \brief Returns TSDF volume storage */
-        const TsdfVolume& volume() const;
+        const TsdfVolume<short2>& volume() const;
 
         /** \brief Returns TSDF volume storage */
-        TsdfVolume& volume();
+        TsdfVolume<short2>& volume();
+
+        /** \brief Returns FG TSDF volume storage */
+        const TsdfVolume<short>& volumeFG() const;
+
+        /** \brief Returns FG TSDF volume storage */
+        TsdfVolume<short>& volumeFG();
 
         /** \brief Returns color volume storage */
         const ColorVolume& colorVolume() const;
@@ -227,7 +254,7 @@ namespace pcl
         float fx_, fy_, cx_, cy_;
 
         /** \brief Tsdf volume container. */
-        TsdfVolume::Ptr tsdf_volume_;
+        TsdfVolume<short2>::Ptr tsdf_volume_;
         TsdfVolume<short>::Ptr tsdf_volume_fg_;
         ColorVolume::Ptr color_volume_;
                 
@@ -243,7 +270,26 @@ namespace pcl
         float  distThres_;
         /** \brief angle threshold in correspondences filtering. Represents max sine of angle between normals. */
         float angleThres_;
-        
+
+
+        /** \brief threshold for minimum blob size in connected components analysis */
+        int outliers_cc_min_blob_size_;
+
+        /** \brief threshold for depth aware connected components analysis */
+        int outliers_cc_depth_threshold_;
+
+        int outliers_cc_max_blob_count_;
+
+        unsigned int outliers_erode_size_;
+
+        float intersection_threshold_;
+        int intersection_cc_min_blob_size_;
+        int intersection_cc_depth_threshold_;
+        int intersection_cc_max_blob_count_;
+
+        DepthMap depth_raw_bg_;
+        DepthMap depth_filtered_fg_;
+
         /** \brief Depth pyramid. */
         std::vector<DepthMap> depths_curr_;
         /** \brief Vertex maps pyramid for current frame in global coordinate space. */
@@ -255,7 +301,10 @@ namespace pcl
         std::vector<MapArr> vmaps_g_prev_;
         /** \brief Normal maps pyramid for previous frame in global coordinate space. */
         std::vector<MapArr> nmaps_g_prev_;
-                
+
+        MapArr vmaps_fg_g_prev_;
+        MapArr nmaps_fg_g_prev_;
+
         /** \brief Vertex maps pyramid for current frame in current coordinate space. */
         std::vector<MapArr> vmaps_curr_;
         /** \brief Normal maps pyramid for current frame in current coordinate space. */
@@ -263,22 +312,48 @@ namespace pcl
 
         /** \brief Array of buffers with ICP correspondences for each pyramid level. */
         std::vector<CorespMap> coresps_;
-        
+
         /** \brief Buffer for storing scaled depth image */
         DeviceArray2D<float> depthRawScaled_;
-        
+        DeviceArray2D<float> depthRawScaled_fg_;
+
         /** \brief Temporary buffer for ICP */
-        DeviceArray2D<double> gbuf_;
+        DeviceArray2D<float> gbuf_;
         /** \brief Buffer to store MLS matrix. */
-        DeviceArray<double> sumbuf_;
+        DeviceArray<float> sumbuf_;
+
+        /** \brief Buffer to store ICP outliers from the camera tracking. */
+        DeviceArray2D<unsigned char> icp_outliers_;
+
+
+        DeviceArray2D<unsigned char> icp_outliers_eroded_temp_;
+        DeviceArray2D<unsigned char> icp_outliers_eroded_;
+
+
+        /** \brief Buffer to store the filtered outliers. */
+        DeviceArray2D<unsigned int> icp_outliers_filtered_;
+        /** \brief Buffer to hold blob size calculation when filtering ICP outliers. */
+        DeviceArray2D<unsigned int> cc_blob_sizes_;
+        /** \brief Buffer used for terminating the connected components labeling */
+        DeviceArray<unsigned char> cc_is_not_done_;
+
+        DeviceArray2D<unsigned char> intersection_map_;
+        DeviceArray2D<unsigned int> intersection_map_filtered_;
+
+        DeviceArray<float> intersection_blobs_center_of_mass_;
+
+        DeviceArray<uint2> cc_reduction_temporary_;
+        DeviceArray<uint2> cc_largest_blobs_;
+
+        DeviceArray<PixelRGB> indexToColorBuffer_;
 
         /** \brief Array of camera rotation matrices for each moment of time. */
         std::vector<Matrix3frm> rmats_;
-        
-        /** \brief Array of camera translations for each moment of time. */
-        std::vector<Vector3f> tvecs_;
 
-        /** \brief Camera movement threshold. TSDF is integrated iff a camera movement metric exceedes some value. */
+        /** \brief Array of camera translations for each moment of time. */
+        std::vector<Vector3f>   tvecs_;
+
+        /** \brief Camera movement threshold. TSDF is integrated iff a camera movement metric exceeds some value. */
         float integration_metric_threshold_;
 
         /** \brief ICP step is completelly disabled. Inly integratio now */
@@ -290,6 +365,18 @@ namespace pcl
           */
         void
         allocateBufffers (int rows_arg, int cols_arg);
+
+        void
+        initIndexToColorBuffer (unsigned int n);
+
+        /** \brief CUDA streams to parallelize background and foreground calculations. */
+        cudaStream_t bg_stream_;
+        cudaStream_t fg_stream_;
+
+        bool bg_integrate_;
+
+        std::vector<float3> intersections_;
+
 
         /** \brief Performs the tracker reset to initial  state. It's used if case of camera tracking fail.
           */

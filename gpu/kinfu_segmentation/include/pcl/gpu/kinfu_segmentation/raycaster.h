@@ -51,6 +51,7 @@ namespace pcl
 {
   namespace gpu
   {
+    template <class T>
     class TsdfVolume;
 
     /** \brief Class that performs raycasting for TSDF volume
@@ -86,8 +87,8 @@ namespace pcl
         * \param[in] volume tsdf volume container
         * \param[in] camera_pose camera pose
         */ 
-      void 
-      run(const TsdfVolume& volume, const Eigen::Affine3f& camera_pose);
+      template <class T> void
+      run(const TsdfVolume<T>& volume, const Eigen::Affine3f& camera_pose);
 
       /** \brief Generates scene view using data raycasted by run method. So call it before.
         * \param[out] view output array for RGB image        
