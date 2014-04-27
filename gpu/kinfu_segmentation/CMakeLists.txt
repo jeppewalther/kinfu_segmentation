@@ -23,6 +23,12 @@ if (build)
     FILE(GLOB incs include/pcl/gpu/kinfu_segmentation/*.h*)
     FILE(GLOB srcs src/*.cpp src/*.h*)
     FILE(GLOB cuda src/cuda/*.cu src/cuda/*.h*)
+
+
+    MESSAGE ("-----------------------------")
+    MESSAGE (${cuda})
+
+
     #FILE(GLOB tsdf src/cuda/tsdf_volume.cu)
     #FILE(GLOB est src/cuda/estimate_tranform.cu)
 
@@ -62,6 +68,8 @@ if (build)
         LIST(APPEND cuda_objs ${tsdf_obj})
     endif()
 
+    MESSAGE("###############################################")
+    MESSAGE(${cuda_objs})
     PCL_ADD_LIBRARY("${LIB_NAME}" "${SUBSYS_NAME}" ${srcs} ${incs} ${cuda} ${cuda_objs})
     target_link_libraries("${LIB_NAME}" pcl_gpu_containers)
 

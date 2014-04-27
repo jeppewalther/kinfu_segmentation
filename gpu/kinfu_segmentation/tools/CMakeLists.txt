@@ -26,12 +26,13 @@ if(OPENNI_FOUND)
 		target_link_libraries("${the_target}" ${OpenCV_LIBS})
 	endif()
 
-	## RECORD TSDFVOLUME
-	set(the_target pcl_record_segmentation_tsdfvolume)
-	set(srcs record_tsdfvolume.cpp capture.cpp)
 
-	PCL_ADD_EXECUTABLE("${the_target}" "${SUBSYS_NAME}" ${srcs} ${hdrs})
-	target_link_libraries("${the_target}" pcl_common pcl_io ${OPENNI_LIBRARIES} pcl_visualization pcl_gpu_kinfu_segmentation)
+	## RECORD TSDFVOLUME
+        #set(the_target pcl_record_segmentation_tsdfvolume)
+        #set(srcs record_tsdfvolume.cpp capture.cpp)
+
+        #PCL_ADD_EXECUTABLE("${the_target}" "${SUBSYS_NAME}" ${srcs} ${hdrs})
+        #target_link_libraries("${the_target}" pcl_common pcl_io ${OPENNI_LIBRARIES} pcl_visualization pcl_gpu_kinfu_segmentation)
 
 	## KINECT FUSION SIMULATION - DISABLED FOR NOW
 	#find_package(GLEW)

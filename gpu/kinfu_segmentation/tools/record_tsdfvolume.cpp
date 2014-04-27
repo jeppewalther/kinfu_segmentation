@@ -44,7 +44,7 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/visualization/point_cloud_handlers.h>
 
-#include <pcl/gpu/kinfu/kinfu.h>
+#include <pcl/gpu/kinfu_segmentation/kinfu.h>
 #include <pcl/gpu/containers/device_array.h>
 #include <pcl/gpu/containers/initialization.h>
 #include "openni_capture.h"
